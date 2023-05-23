@@ -38,3 +38,6 @@ out/
 
 # env
 application.properties
+
+# config
+application.yml
