@@ -4,20 +4,26 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 @Entity
-public class User {
-
+@Table(name = "User")
+public class UserEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long userId;
+  private Long id;
+  @NotNull
   private String email;
+  @NotNull
+  private String nickname;
 
-  public User(String email) {
+  public UserEntity(String email, String nickname) {
     this.email = email;
+    this.nickname = nickname;
   }
 }
