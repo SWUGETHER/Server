@@ -12,15 +12,15 @@ public class ResponseDto {
   private final Integer code;
   private final String message;
 
-  public static ResponseDto of(Boolean success, Code code) {
+  public static ResponseDto of(Code code) {
     return new ResponseDto(code.getCode(), code.getMessage());
   }
 
-  public static ResponseDto of(Boolean success, Code errCode, Exception e) {
+  public static ResponseDto of(Code errCode, Exception e) {
     return new ResponseDto(errCode.getCode(), errCode.getMessage(e));
   }
 
-  public static ResponseDto of(Boolean success, Code errCode, String message) {
+  public static ResponseDto of(Code errCode, String message) {
     return new ResponseDto(errCode.getCode(), errCode.getMessage(message));
   }
 }
