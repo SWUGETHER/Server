@@ -13,6 +13,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.jetbrains:annotations:23.0.0'
     annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.26'
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.26'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -26,6 +27,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'it.ozimov:embedded-redis:0.7.3'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'commons-io:commons-io:2.11.0'
 }
 
 configurations {
