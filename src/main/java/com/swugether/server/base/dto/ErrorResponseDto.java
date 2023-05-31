@@ -5,15 +5,15 @@ import com.swugether.server.base.constant.Code;
 public class ErrorResponseDto extends ResponseDto {
 
   private ErrorResponseDto(Code errCode) {
-    super(errCode.getCode(), errCode.getMessage());
+    super(errCode.getStatus(), errCode.getMessage());
   }
 
   private ErrorResponseDto(Code errCode, Exception e) {
-    super(errCode.getCode(), errCode.getMessage(e));
+    super(errCode.getStatus(), errCode.getMessage(e));
   }
 
   private ErrorResponseDto(Code errCode, String message) {
-    super(errCode.getCode(), errCode.getMessage(message));
+    super(errCode.getStatus(), errCode.getMessage(message));
   }
 
   public static ErrorResponseDto of(Code errCode) {

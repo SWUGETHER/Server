@@ -13,14 +13,14 @@ public class ResponseDto {
   private final String message;
 
   public static ResponseDto of(Code code) {
-    return new ResponseDto(code.getCode(), code.getMessage());
+    return new ResponseDto(code.getStatus(), code.getMessage());
   }
 
   public static ResponseDto of(Code errCode, Exception e) {
-    return new ResponseDto(errCode.getCode(), errCode.getMessage(e));
+    return new ResponseDto(errCode.getStatus(), errCode.getMessage(e));
   }
 
   public static ResponseDto of(Code errCode, String message) {
-    return new ResponseDto(errCode.getCode(), errCode.getMessage(message));
+    return new ResponseDto(errCode.getStatus(), errCode.getMessage(message));
   }
 }

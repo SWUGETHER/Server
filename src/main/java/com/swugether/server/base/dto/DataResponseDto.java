@@ -8,12 +8,12 @@ public class DataResponseDto<T> extends ResponseDto {
   private final T data;
 
   private DataResponseDto(T data) {
-    super(Code.OK.getCode(), Code.OK.getMessage());
+    super(Code.OK.getStatus(), Code.OK.getMessage());
     this.data = data;
   }
 
   private DataResponseDto(T data, String message) {
-    super(Code.OK.getCode(), message);
+    super(Code.OK.getStatus(), message);
     this.data = data;
   }
 
