@@ -13,13 +13,12 @@ import org.springframework.http.HttpStatus;
 public enum Code {
   OK(200, HttpStatus.OK, "OK."),
   BAD_REQUEST(400, HttpStatus.BAD_REQUEST, "Bad request."),
-  VALIDATION_ERROR(401, HttpStatus.BAD_REQUEST, "Validation error."),
+  UNAUTHORIZED(401, HttpStatus.UNAUTHORIZED, "User unauthorized."),
+  FORBIDDEN(403, HttpStatus.FORBIDDEN, "Permission denied."),
   NOT_FOUND(404, HttpStatus.NOT_FOUND, "Requested resource is not found."),
-  INTERNAL_ERROR(500, HttpStatus.INTERNAL_SERVER_ERROR, "Internal error."),
-  DATA_ACCESS_ERROR(500, HttpStatus.INTERNAL_SERVER_ERROR, "Data access error."),
-  UNAUTHORIZED(401, HttpStatus.UNAUTHORIZED, "User unauthorized.");
+  INTERNAL_ERROR(500, HttpStatus.INTERNAL_SERVER_ERROR, "Internal error.");
 
-  private final Integer code;
+  private final Integer status;
   private final HttpStatus httpStatus;
   private final String message;
 
@@ -43,7 +42,16 @@ public enum Code {
         .findFirst()
         .orElseGet(() -> {
           if (httpStatus.is4xxClientError()) {
-            return Code.BAD_REQUEST;
+            switch (httpStatus.value()) {
+              case 401:
+                return Code.UNAUTHORIZED;
+              case 403:
+                return Code.FORBIDDEN;
+              case 404:
+                return Code.NOT_FOUND;
+              default:
+                return Code.BAD_REQUEST;
+            }
           } else if (httpStatus.is5xxServerError()) {
             return Code.INTERNAL_ERROR;
           } else {
@@ -54,6 +62,6 @@ public enum Code {
 
   @Override
   public String toString() {
-    return String.format("%s (%d)", this.name(), this.getCode());
+    return String.format("%s (%d)", this.name(), this.getStatus());
   }
 }
