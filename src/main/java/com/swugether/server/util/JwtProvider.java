@@ -1,8 +1,11 @@
 package com.swugether.server.util;
 
+import static io.jsonwebtoken.Jwts.builder;
+import static io.jsonwebtoken.Jwts.parser;
+
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Header;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.InvalidClaimException;
 import io.jsonwebtoken.SignatureAlgorithm;
 import java.time.Duration;
 import java.util.Base64;
@@ -24,7 +27,7 @@ public class JwtProvider {
     Date now = new Date();
     Date expiration = new Date(now.getTime() + Duration.ofHours(2).toMillis()); // 만료시간: 2h
 
-    String accessToken = Jwts.builder()
+    String accessToken = builder()
         .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
         .setClaims(payloads)
         .setIssuer("admin")
@@ -34,7 +37,7 @@ public class JwtProvider {
         .signWith(SignatureAlgorithm.HS256,
             Base64.getEncoder().encodeToString(secretKey.getBytes()))
         .compact();
-    String refreshToken = Jwts.builder()
+    String refreshToken = builder()
         .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
         .setClaims(payloads)
         .setIssuer("admin")
@@ -53,8 +56,9 @@ public class JwtProvider {
   }
 
   // 토큰 검증
-  public Map<String, Object> verifyJWT(String jwt) throws ExpiredJwtException {
-    return Jwts.parser()
+  public Map<String, Object> verifyJWT(String jwt)
+      throws InvalidClaimException, ExpiredJwtException {
+    return parser()
         .setSigningKey(secretKey.getBytes())
         .parseClaimsJws(jwt)
         .getBody();
