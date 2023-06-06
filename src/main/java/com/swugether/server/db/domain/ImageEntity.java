@@ -2,7 +2,9 @@ package com.swugether.server.db.domain;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
 
 import javax.persistence.*;
 
@@ -10,6 +12,8 @@ import javax.persistence.*;
 @Setter
 @Entity
 @Table(name = "Image")
+@NoArgsConstructor
+@DynamicInsert
 public class ImageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,9 +27,5 @@ public class ImageEntity {
     public ImageEntity(ContentEntity post, String imagePath) {
         this.post = post;
         this.imagePath = imagePath;
-    }
-
-    public ImageEntity() {
-
     }
 }
