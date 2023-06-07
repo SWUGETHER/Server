@@ -56,19 +56,19 @@ public class PostService {
     }
 
     // 게시글 작성 값 유효성 검사
-    public void isPostValid(String title, String content) throws IllegalArgumentException {
-        boolean isTitleNotValid = true;
-        boolean isContentNotValid = true;
+    public void isPostValueValid(String str, boolean isTitle) throws IllegalArgumentException {
+        boolean isNotValid = true;
 
         // 공백 검사
-        isTitleNotValid = (title == null) || title.isBlank();
-        isContentNotValid = (content == null) || content.isBlank();
+        isNotValid = (str == null) || str.isBlank();
 
-        // 길이 검사
-        assert title != null;
-        isTitleNotValid = (title.length() == 0) || (title.length() > 100);
+        // title 길이 검사
+        if (isTitle) {
+            assert str != null;
+            isNotValid = (str.length() == 0) || (str.length() > 100);
+        }
 
-        if (isTitleNotValid || isContentNotValid) {
+        if (isNotValid) {
             throw new IllegalArgumentException("Invalid value.");
         }
     }
@@ -185,7 +185,8 @@ public class PostService {
         UserEntity user = validateToken.validateAuthorization(authorization);
 
         // 작성 값 유효성 검사
-        isPostValid(title, content);
+        isPostValueValid(title, true);
+        isPostValueValid(content, false);
 
         // 게시글 데이터 저장
         ContentEntity post = new ContentEntity(user, title, content);
@@ -209,24 +210,37 @@ public class PostService {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
-        // 작성 값 유효성 검사
-        isPostValid(title, content);
-
         // 게시글 조회
         ContentEntity post = contentRepository.findById(postId).orElse(null);
         if (post == null) {
             throw new EntityNotFoundException();
         }
 
-        // 게시글 데이터 업데이트
-        post.setTitle(title);
-        post.setContent(content);
+        if (!post.getUser().equals(user)) {
+            throw new AccessDeniedException("Not the writer.");
+        }
 
-        // 이미지 데이터 수정
-        deleteImages(post);
+        if (title != null) {
+            // 값 유효성 검사
+            isPostValueValid(title, true);
+            // 데이터 업데이트
+            post.setTitle(title);
+        }
 
-        // 이미지 데이터 저장
-        saveImages(post, images);
+        if (content != null) {
+            // 값 유효성 검사
+            isPostValueValid(content, true);
+            // 데이터 업데이트
+            post.setContent(content);
+        }
+
+        if (images != null) {
+            // 이미지 데이터 수정
+            deleteImages(post);
+
+            // 이미지 데이터 저장
+            saveImages(post, images);
+        }
     }
 
     // 게시글 삭제

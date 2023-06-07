@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.naming.NoPermissionException;
 import javax.persistence.EntityNotFoundException;
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -116,8 +117,8 @@ public class PostController {
     @PatchMapping("/{postId}")
     public ResponseEntity<ResponseDto> update(@PathVariable Long postId,
                                               @RequestHeader("Authorization") String bearer_token,
-                                              @RequestParam(value = "title") String title, @RequestParam(value = "content") String content,
-                                              @RequestParam(value = "images") List<MultipartFile> images)
+                                              @RequestParam(value = "title", required = false) String title, @RequestParam(value = "content", required = false) String content,
+                                              @RequestParam(value = "images", required = false) List<MultipartFile> images)
             throws IndexOutOfBoundsException, UnauthorizedAccessException, IllegalArgumentException, EntityNotFoundException {
         try {
             postService.updateService(bearer_token, postId, title, content, images);
@@ -132,6 +133,11 @@ public class PostController {
 
             return ResponseEntity.status(401)
                     .body(ErrorResponseDto.of(Code.UNAUTHORIZED, e.getMessage()));
+        } catch (AccessDeniedException e) {
+            log.error(e.getMessage());
+
+            return ResponseEntity.status(403)
+                    .body(ErrorResponseDto.of(Code.FORBIDDEN, e.getMessage()));
         } catch (Exception e) {
             log.error(e.getMessage());
 
