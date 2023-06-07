@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -55,8 +56,8 @@ public class AuthService {
     // 유저 추가
     public Map<String, Object> addUser(UserEntity googleUser) {
         // DB 조회 (이미 회원인 경우 / 새로운 회원인 경우)
-        UserEntity user = userRepository.findByEmail(googleUser.getEmail())
-                .orElse(userRepository.save(googleUser));
+        Optional<UserEntity> findUser = userRepository.findByEmail(googleUser.getEmail());
+        UserEntity user = findUser.orElseGet(() -> userRepository.save(googleUser));
         Long userId = user.getId();
 
         // token
@@ -65,6 +66,7 @@ public class AuthService {
         // 응답 전송
         Map<String, Object> responseData = new LinkedHashMap<>();
         responseData.put("userId", userId);
+        responseData.put("isAdmin", user.getIsAdmin());
         responseData.putAll(tokens);
 
         return responseData;

@@ -8,6 +8,7 @@ import org.hibernate.annotations.DynamicInsert;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -23,10 +24,28 @@ public class UserEntity {
     private String email;
     @NotNull
     private String nickname;
+    @NotNull
+    private Boolean isAdmin;
 
     @Builder
     public UserEntity(String email, String nickname) {
         this.email = email;
         this.nickname = nickname;
+        this.isAdmin = false;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj.getClass() != UserEntity.class) {
+            return false;
+        }
+
+        UserEntity user = (UserEntity) obj;
+        return Objects.equals(user.getId(), this.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, email);
     }
 }
