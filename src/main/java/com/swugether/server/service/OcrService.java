@@ -38,7 +38,7 @@ public class OcrService {
 
             // 응답 처리
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("[ " + apiUrl + "/extract_data ]" + " Request successed.");
+                log.info("[ " + apiUrl + " ]" + " Request successed.");
 
                 return response.getBody();
             } else if (response.getStatusCode().value() == 422 && Objects.requireNonNull(response.getBody()).contains("value_error")) {
@@ -46,7 +46,7 @@ public class OcrService {
 
                 throw new IllegalArgumentException("Type error. (Image required.)");
             } else {
-                log.error("[ " + apiUrl + "/extract_data ]" + " Request failed.");
+                log.error("[ " + apiUrl + " ]" + " Request failed.");
 
                 throw new Exception("Request failed.");
             }
