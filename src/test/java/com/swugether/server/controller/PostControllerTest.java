@@ -1,12 +1,12 @@
 package com.swugether.server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.swugether.server.db.dao.ContentRepository;
-import com.swugether.server.db.dao.UserRepository;
-import com.swugether.server.db.domain.ContentEntity;
-import com.swugether.server.db.domain.UserEntity;
-import com.swugether.server.service.AuthService;
-import com.swugether.server.service.PostService;
+import com.swugether.server.domain.Auth.application.AuthService;
+import com.swugether.server.domain.Auth.domain.UserEntity;
+import com.swugether.server.domain.Auth.domain.UserRepository;
+import com.swugether.server.domain.Post.application.PostService;
+import com.swugether.server.domain.Post.domain.ContentEntity;
+import com.swugether.server.domain.Post.domain.ContentRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,8 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.naming.NoPermissionException;
@@ -28,6 +30,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Slf4j
@@ -138,9 +141,11 @@ class PostControllerTest {
         String url = "/post/detail/";
 
         try {
-            this.mockMvc.perform(get(url + post_id)
-                            .header("Authorization", AUTHORIZATION))
-                    .andExpect(status().isOk())
+            ResultActions result = this.mockMvc.perform(get(url + post_id)
+                    .header("Authorization", AUTHORIZATION)
+                    .accept(MediaType.APPLICATION_JSON));
+            result.andExpect(status().isOk())
+                    .andExpect(jsonPath("data.post_id").value(post_id))
                     .andDo(print());
         } catch (Exception e) {
             log.error(e.getMessage());

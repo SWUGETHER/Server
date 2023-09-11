@@ -1,8 +1,8 @@
 package com.swugether.server.controller;
 
-import com.swugether.server.db.domain.UserEntity;
-import com.swugether.server.service.AuthService;
-import com.swugether.server.service.PostService;
+import com.swugether.server.domain.Auth.application.AuthService;
+import com.swugether.server.domain.Auth.domain.UserEntity;
+import com.swugether.server.domain.Post.application.PostService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

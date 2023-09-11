@@ -1,11 +1,11 @@
 package com.swugether.server.controller;
 
-import com.swugether.server.db.dao.RefreshTokenRepository;
-import com.swugether.server.db.dao.UserRepository;
-import com.swugether.server.db.domain.RefreshTokenEntity;
-import com.swugether.server.db.domain.UserEntity;
-import com.swugether.server.service.AuthService;
-import com.swugether.server.util.JwtProvider;
+import com.swugether.server.domain.Auth.application.AuthService;
+import com.swugether.server.domain.Auth.domain.RefreshTokenEntity;
+import com.swugether.server.domain.Auth.domain.RefreshTokenRepository;
+import com.swugether.server.domain.Auth.domain.UserEntity;
+import com.swugether.server.domain.Auth.domain.UserRepository;
+import com.swugether.server.global.util.JwtProvider;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
