@@ -4,6 +4,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.InvalidClaimException;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -17,7 +18,8 @@ import static io.jsonwebtoken.Jwts.parser;
 
 @Component
 public class JwtProvider {
-    private final String secretKey = System.getenv("JWT_SECRET_KEY");
+    @Value("${JWT_SECRET_KEY}")
+    private String secretKey;
 
     // 토큰 발행
     public Map<String, Object> createToken(Long userId, String email) {

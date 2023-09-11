@@ -1,6 +1,5 @@
 package com.swugether.server.global.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swugether.server.domain.Auth.domain.UserEntity;
 import com.swugether.server.domain.Post.domain.ContentEntity;
 import com.swugether.server.domain.Post.domain.ImageEntity;
@@ -9,41 +8,21 @@ import com.swugether.server.domain.Post.domain.LikedRepository;
 import com.swugether.server.domain.Post.dto.ImageDto;
 import com.swugether.server.domain.Post.dto.PostDto;
 import com.swugether.server.domain.Post.dto.PostItemDto;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
+@RequiredArgsConstructor
 @Component
 public class PostDtoProvider {
     private final LikedRepository likedRepository;
     private final ImageRepository imageRepository;
-    private final ObjectMapper objectMapper;
-
-    @Autowired
-    public PostDtoProvider(LikedRepository likedRepository, ImageRepository imageRepository,
-                           ObjectMapper objectMapper) {
-        this.likedRepository = likedRepository;
-        this.imageRepository = imageRepository;
-        this.objectMapper = objectMapper;
-    }
 
     // 게시글 내 이미지 목록 조회
-    public ArrayList<Map<String, Object>> getImages(ContentEntity post) {
-        List<ImageEntity> imageData = imageRepository.findAllByPost(post);
-        ArrayList<Map<String, Object>> result = new ArrayList<>();
+    public ArrayList<ImageDto> getImages(ContentEntity post) {
 
-        for (ImageEntity image : imageData) {
-            ImageDto imageDto = ImageDto.builder()
-                    .image_id(image.getId())
-                    .image_path(image.getImagePath())
-                    .build();
-            result.add(objectMapper.convertValue(imageDto, Map.class));
-        }
-
-        return result;
+        return imageRepository.findAllByPost(post);
     }
 
     // 썸네일 이미지 조회

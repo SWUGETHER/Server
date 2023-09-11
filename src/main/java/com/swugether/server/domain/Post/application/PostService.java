@@ -3,18 +3,18 @@ package com.swugether.server.domain.Post.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swugether.server.domain.Auth.domain.UserEntity;
 import com.swugether.server.domain.Post.domain.*;
+import com.swugether.server.domain.Post.dto.ImageDto;
 import com.swugether.server.domain.Post.dto.PostDto;
 import com.swugether.server.domain.Post.dto.SavedPostDto;
 import com.swugether.server.global.exception.UnauthorizedAccessException;
 import com.swugether.server.global.util.PostDtoProvider;
 import com.swugether.server.global.util.ValidateToken;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.naming.NoPermissionException;
-import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@RequiredArgsConstructor
 @Slf4j
 @Service
 public class PostService {
@@ -37,18 +38,6 @@ public class PostService {
     private final LikedRepository likedRepository;
     private final ObjectMapper objectMapper;
     private final String ImagePath = System.getenv("FILE_UPLOAD_BASE_PATH");
-
-    @Autowired
-    public PostService(ValidateToken validateToken, PostDtoProvider postDtoProvider,
-                       ContentRepository contentRepository, ImageRepository imageRepository,
-                       LikedRepository likedRepository, ObjectMapper objectMapper, EntityManager entityManager) {
-        this.validateToken = validateToken;
-        this.postDtoProvider = postDtoProvider;
-        this.contentRepository = contentRepository;
-        this.imageRepository = imageRepository;
-        this.likedRepository = likedRepository;
-        this.objectMapper = objectMapper;
-    }
 
     // 게시글 작성 값 유효성 검사
     public void isPostValueValid(String str, boolean isTitle) throws IllegalArgumentException {
@@ -85,24 +74,24 @@ public class PostService {
 
     // 이미지 삭제
     public void deleteImages(ContentEntity post) throws FileSystemException {
-        List<ImageEntity> images = imageRepository.findAllByPost(post);
+        List<ImageDto> images = imageRepository.findAllByPost(post);
 
-        for (ImageEntity image : images) {
+        for (ImageDto image : images) {
             // 파일 삭제
             try {
-                File file = new File(ImagePath + image.getImagePath());
+                File file = new File(ImagePath + image.getImage_path());
                 boolean result = file.delete();
                 if (result) {
-                    log.info("File deleted: " + image.getImagePath());
+                    log.info("File deleted: " + image.getImage_path());
                 } else {
-                    log.error("File deletion failed: " + image.getImagePath());
+                    log.error("File deletion failed: " + image.getImage_path());
                 }
             } catch (Exception e) {
                 throw new FileSystemException("Deleted image failed.");
             }
 
             // 데이터 삭제
-            imageRepository.deleteById(image.getId());
+            imageRepository.deleteById(image.getImage_id());
         }
     }
 

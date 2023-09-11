@@ -4,7 +4,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -18,12 +17,12 @@ public class PostDto {
     private String title;
     private String content;
     private Integer like_count;
-    private List<Map<String, Object>> images;
+    private List<ImageDto> images;
     private Boolean is_liked;
 
     @Builder
     public PostDto(Long post_id, Long user_id, LocalDateTime created_at, LocalDateTime updated_at,
-                   String title, String content, Integer like_count, List<Map<String, Object>> images,
+                   String title, String content, Integer like_count, List<ImageDto> images,
                    Boolean is_liked) {
         this.post_id = post_id;
         this.user_id = user_id;

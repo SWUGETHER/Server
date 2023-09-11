@@ -8,8 +8,8 @@ import com.swugether.server.global.exception.UnauthorizedAccessException;
 import com.swugether.server.global.util.GoogleOAuth;
 import com.swugether.server.global.util.JwtProvider;
 import com.swugether.server.global.util.ValidateToken;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class AuthService {
     private final GoogleOAuth googleOAuth;
@@ -28,17 +29,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final ValidateToken validateToken;
-
-    @Autowired
-    public AuthService(GoogleOAuth googleOAuth, JwtProvider jwtProvider,
-                       UserRepository userRepository,
-                       RefreshTokenRepository refreshTokenRepository, ValidateToken validateToken) {
-        this.googleOAuth = googleOAuth;
-        this.jwtProvider = jwtProvider;
-        this.userRepository = userRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.validateToken = validateToken;
-    }
 
     // 토큰 발행
     public Map<String, Object> generateTokens(Long userId, String email) {

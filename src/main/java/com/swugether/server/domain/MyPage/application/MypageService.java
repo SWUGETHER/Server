@@ -7,7 +7,7 @@ import com.swugether.server.domain.Post.domain.ContentRepository;
 import com.swugether.server.global.exception.UnauthorizedAccessException;
 import com.swugether.server.global.util.PostDtoProvider;
 import com.swugether.server.global.util.ValidateToken;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import javax.naming.NoPermissionException;
@@ -15,21 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@RequiredArgsConstructor
 @Service
 public class MypageService {
     private final ValidateToken validateToken;
     private final PostDtoProvider postDtoProvider;
     private final ContentRepository contentRepository;
     private final ObjectMapper objectMapper;
-
-    @Autowired
-    public MypageService(ValidateToken validateToken, PostDtoProvider postDtoProvider,
-                         ContentRepository contentRepository, ObjectMapper objectMapper) {
-        this.validateToken = validateToken;
-        this.postDtoProvider = postDtoProvider;
-        this.contentRepository = contentRepository;
-        this.objectMapper = objectMapper;
-    }
 
     // 내가 쓴 글 목록 조회
     public ArrayList<Map<String, Object>> listService(String authorization)

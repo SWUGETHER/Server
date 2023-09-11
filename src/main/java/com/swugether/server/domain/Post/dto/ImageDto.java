@@ -1,10 +1,12 @@
 package com.swugether.server.domain.Post.dto;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
-@ToString
 @NoArgsConstructor
 public class ImageDto {
     private Long image_id;
