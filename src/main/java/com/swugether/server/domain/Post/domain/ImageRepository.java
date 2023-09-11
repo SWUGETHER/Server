@@ -12,7 +12,7 @@ import java.util.ArrayList;
 public interface ImageRepository extends CrudRepository<ImageEntity, Long> {
     @Query("select new com.swugether.server.domain.Post.dto.ImageDto(i.id, i.imagePath) " +
             "from ImageEntity i " +
-            "where ContentEntity = :post")
+            "where i.post = :post")
     ArrayList<ImageDto> findAllByPost(ContentEntity post);
 
     ImageEntity findTopByPostOrderByIdAsc(ContentEntity post);
