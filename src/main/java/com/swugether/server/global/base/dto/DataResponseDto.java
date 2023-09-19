@@ -1,31 +1,31 @@
 package com.swugether.server.global.base.dto;
 
-import com.swugether.server.global.base.constant.Code;
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
 @Getter
 public class DataResponseDto<T> extends ResponseDto {
     private final T data;
 
-    private DataResponseDto(T data) {
-        super(Code.OK.getStatus(), Code.OK.getMessage());
+    private DataResponseDto(T data, Integer code) {
+        super(code, HttpStatus.valueOf(code).getReasonPhrase());
         this.data = data;
     }
 
-    private DataResponseDto(T data, String message) {
-        super(Code.OK.getStatus(), message);
+    private DataResponseDto(T data, Integer code, String message) {
+        super(code, message);
         this.data = data;
     }
 
     public static <T> DataResponseDto<T> of(T data) {
-        return new DataResponseDto<>(data);
+        return new DataResponseDto<>(data, 200);
     }
 
-    public static <T> DataResponseDto<T> of(T data, String message) {
-        return new DataResponseDto<>(data, message);
+    public static <T> DataResponseDto<T> of(T data, Integer code) {
+        return new DataResponseDto<>(data, code);
     }
 
-    public static <T> DataResponseDto<T> empty() {
-        return new DataResponseDto<>(null);
+    public static <T> DataResponseDto<T> of(T data, Integer code, String message) {
+        return new DataResponseDto<>(data, code, message);
     }
 }

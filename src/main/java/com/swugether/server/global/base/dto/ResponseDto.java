@@ -1,26 +1,30 @@
 package com.swugether.server.global.base.dto;
 
-import com.swugether.server.global.base.constant.Code;
+import com.swugether.server.global.base.constant.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.ToString;
+import org.springframework.http.HttpStatus;
 
-@Getter
-@ToString
 @RequiredArgsConstructor
+@Getter
 public class ResponseDto {
     private final Integer code;
     private final String message;
 
-    public static ResponseDto of(Code code) {
-        return new ResponseDto(code.getStatus(), code.getMessage());
+    public static ResponseDto of(Integer code) {
+        return new ResponseDto(code, HttpStatus.valueOf(code).getReasonPhrase());
     }
 
-    public static ResponseDto of(Code errCode, Exception e) {
-        return new ResponseDto(errCode.getStatus(), errCode.getMessage(e));
+    public static ResponseDto of(HttpStatus httpStatus) {
+        return new ResponseDto(httpStatus.value(), httpStatus.getReasonPhrase());
     }
 
-    public static ResponseDto of(Code errCode, String message) {
-        return new ResponseDto(errCode.getStatus(), errCode.getMessage(message));
+    public static ResponseDto of(ErrorCode e) {
+        return new ResponseDto(e.getHttpStatus().value(), e.getMessage());
     }
+
+    public static ResponseDto of(Integer code, String message) {
+        return new ResponseDto(code, message);
+    }
+
 }
