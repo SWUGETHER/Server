@@ -1,32 +1,32 @@
 package com.swugether.server.domain.MyPage.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swugether.server.domain.Auth.domain.UserEntity;
+import com.swugether.server.domain.MyPage.dto.MyPostItemDto;
+import com.swugether.server.domain.MyPage.dto.MyPostListDto;
 import com.swugether.server.domain.Post.domain.ContentEntity;
 import com.swugether.server.domain.Post.domain.ContentRepository;
-import com.swugether.server.global.exception.UnauthorizedAccessException;
-import com.swugether.server.global.util.PostDtoProvider;
+import com.swugether.server.domain.Post.domain.ImageRepository;
+import com.swugether.server.domain.Post.domain.LikedRepository;
+import com.swugether.server.global.exception.AuthorizationException;
+import com.swugether.server.global.exception.GlobalException;
 import com.swugether.server.global.util.ValidateToken;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import javax.naming.NoPermissionException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
 public class MypageService {
     private final ValidateToken validateToken;
-    private final PostDtoProvider postDtoProvider;
     private final ContentRepository contentRepository;
-    private final ObjectMapper objectMapper;
+    private final LikedRepository likedRepository;
+    private final ImageRepository imageRepository;
 
     // 내가 쓴 글 목록 조회
-    public ArrayList<Map<String, Object>> listService(String authorization)
-            throws IllegalStateException, UnauthorizedAccessException, NoPermissionException {
-        ArrayList<Map<String, Object>> result = new ArrayList<>();
+    public MyPostListDto listService(String authorization) throws GlobalException, AuthorizationException {
+        ArrayList<MyPostItemDto> result = new ArrayList<>();
 
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
@@ -36,9 +36,14 @@ public class MypageService {
 
         // 데이터 정제
         for (ContentEntity post : contents) {
-            result.add(objectMapper.convertValue(postDtoProvider.getPostItemDto(post, user), Map.class));
+            MyPostItemDto dto = MyPostItemDto.builder()
+                    .content(post)
+                    .is_liked(likedRepository.existsByUserAndPost(user, post))
+                    .thumbnail_image_path(imageRepository.findTopByPostOrderByIdAsc(post).getImagePath())
+                    .build();
+            result.add(dto);
         }
 
-        return result;
+        return new MyPostListDto(result);
     }
 }
