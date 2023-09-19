@@ -3,34 +3,24 @@ package com.swugether.server.global.util;
 import com.swugether.server.domain.Auth.domain.RefreshTokenRepository;
 import com.swugether.server.domain.Auth.domain.UserEntity;
 import com.swugether.server.domain.Auth.domain.UserRepository;
-import com.swugether.server.global.exception.UnauthorizedAccessException;
+import com.swugether.server.global.base.constant.GlobalErrorCode;
+import com.swugether.server.global.exception.AuthorizationException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.InvalidClaimException;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import javax.naming.NoPermissionException;
-import javax.validation.constraints.NotNull;
-import java.util.HashMap;
 import java.util.Map;
 
+@RequiredArgsConstructor
 @Component
 public class ValidateToken {
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
 
-    @Autowired
-    public ValidateToken(JwtProvider jwtProvider, RefreshTokenRepository refreshTokenRepository,
-                         UserRepository userRepository) {
-        this.jwtProvider = jwtProvider;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.userRepository = userRepository;
-    }
-
-    public UserEntity validateAuthorization(@NotNull String authorization)
-            throws IndexOutOfBoundsException, UnauthorizedAccessException, NoPermissionException {
-        Map<String, Object> payload = new HashMap<>();
+    public UserEntity validateAuthorization(String authorization) throws AuthorizationException {
+        Map<String, Object> payload;
         Long userId;
 
         // 헤더에서 token 추출
@@ -40,18 +30,20 @@ public class ValidateToken {
             // 토큰 유효성 검사 및 유저 정보 추출
             payload = jwtProvider.verifyJWT(accessToken);
             userId = ((Number) payload.get("userId")).longValue();
-        } catch (InvalidClaimException | ExpiredJwtException e) {
-            throw new UnauthorizedAccessException(e.getMessage());
+        } catch (InvalidClaimException e) {
+            throw new AuthorizationException(GlobalErrorCode.INVALID_TOKEN);
+        } catch (ExpiredJwtException e) {
+            throw new AuthorizationException(GlobalErrorCode.EXPIRED_JWT);
         }
+
+        // 유저 존재 여부 검사
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthorizationException(GlobalErrorCode.USER_NOT_FOUND));
 
         // 로그인 여부 검사
-        boolean isRefreshTokenExist = refreshTokenRepository.existsById(userId);
+        if (!refreshTokenRepository.existsById(userId))
+            throw new AuthorizationException(GlobalErrorCode.LOGIN_REQUIRED);
 
-        if (!isRefreshTokenExist) {
-            throw new NoPermissionException("User is logged out");
-        }
-
-        return userRepository.findById(userId)
-                .orElse(null);
+        return user;
     }
 }
