@@ -4,21 +4,23 @@ import com.swugether.server.domain.Auth.domain.RefreshTokenEntity;
 import com.swugether.server.domain.Auth.domain.RefreshTokenRepository;
 import com.swugether.server.domain.Auth.domain.UserEntity;
 import com.swugether.server.domain.Auth.domain.UserRepository;
-import com.swugether.server.global.exception.UnauthorizedAccessException;
+import com.swugether.server.domain.Auth.dto.NewUserResponseDto;
+import com.swugether.server.domain.Auth.dto.RefreshTokenResponseDto;
+import com.swugether.server.domain.Auth.exception.AuthErrorCode;
+import com.swugether.server.global.base.constant.GlobalErrorCode;
+import com.swugether.server.global.exception.AuthorizationException;
+import com.swugether.server.global.exception.GlobalException;
 import com.swugether.server.global.util.GoogleOAuth;
 import com.swugether.server.global.util.JwtProvider;
 import com.swugether.server.global.util.ValidateToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.naming.NoPermissionException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -30,7 +32,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final ValidateToken validateToken;
 
-    // 토큰 발행
+    // 토큰 발행 Method
     public Map<String, Object> generateTokens(Long userId, String email) {
         //token 발행
         Map<String, Object> tokens = jwtProvider.createToken(userId, email);
@@ -43,64 +45,42 @@ public class AuthService {
         return tokens;
     }
 
-    // 유저 추가
-    public Map<String, Object> addUser(UserEntity googleUser) {
-        // DB 조회 (이미 회원인 경우 / 새로운 회원인 경우)
-        Optional<UserEntity> findUser = userRepository.findByEmail(googleUser.getEmail());
-        UserEntity user = findUser.orElseGet(() -> userRepository.save(googleUser));
-        Long userId = user.getId();
-
-        // token
-        Map<String, Object> tokens = generateTokens(userId, googleUser.getEmail());
-
-        // 응답 전송
-        Map<String, Object> responseData = new LinkedHashMap<>();
-        responseData.put("userId", userId);
-        responseData.put("isAdmin", user.getIsAdmin());
-        responseData.putAll(tokens);
-
-        return responseData;
-    }
-
     // 로그인
-    public Map<String, Object> loginService(String id_token)
-            throws GeneralSecurityException, IOException {
-
+    @Transactional
+    public NewUserResponseDto loginService(String id_token) throws AuthorizationException, GlobalException {
         // token 유효성 확인 및 payload 추출
-        UserEntity googleUser = googleOAuth.authenticate(id_token);
+        UserEntity googleUser;
 
-        if (googleUser == null) {
-            throw new GeneralSecurityException("Invalid id token.");
+        try {
+            googleUser = googleOAuth.authenticate(id_token)
+                    .orElseThrow(() -> new AuthorizationException(AuthErrorCode.INVALID_ID_TOKEN));
+        } catch (IOException | GeneralSecurityException | AuthorizationException e) {
+            log.error(e.getMessage());
+
+            throw new AuthorizationException(GlobalErrorCode.INVALID_TOKEN);
         }
 
-        return addUser(googleUser);
+        UserEntity user = userRepository.findByEmail(googleUser.getEmail())
+                .orElse(userRepository.save(googleUser));
+
+        return new NewUserResponseDto(user, generateTokens(user.getId(), googleUser.getEmail()));
     }
 
     // 로그아웃
-    public void logoutService(String authorization)
-            throws IndexOutOfBoundsException, UnauthorizedAccessException, NoPermissionException, EmptyResultDataAccessException {
+    @Transactional
+    public void logoutService(String authorization) throws AuthorizationException, GlobalException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
-
-        // user가 존재하지 않을 경우
-        if (user == null) {
-            throw new EmptyResultDataAccessException(1);
-        }
 
         // redis 내 refresh token 데이터 삭제
         refreshTokenRepository.deleteById(user.getId());
     }
 
     // 회원탈퇴
-    public void leaveService(String authorization)
-            throws IndexOutOfBoundsException, UnauthorizedAccessException, NoPermissionException, EmptyResultDataAccessException {
+    @Transactional
+    public void leaveService(String authorization) throws AuthorizationException, GlobalException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
-
-        // user가 존재하지 않을 경우
-        if (user == null) {
-            throw new EmptyResultDataAccessException(1);
-        }
 
         // redis 내 refresh token 데이터 삭제
         refreshTokenRepository.deleteById(user.getId());
@@ -110,29 +90,25 @@ public class AuthService {
     }
 
     // access token 재발급
-    public Map<String, Object> refreshService(String authorization, String bearer_refresh)
-            throws NoPermissionException, IndexOutOfBoundsException, UnauthorizedAccessException {
-        boolean isAllowed;
+    public RefreshTokenResponseDto refreshService(String authorization, String bearer_refresh) throws AuthorizationException, GlobalException {
+        // Token refreshing 허가 여부
+        boolean isAllowed = false;
 
         // accessToken 만료 검사
         try {
             validateToken.validateAuthorization(authorization);
-            isAllowed = false;
-        } catch (UnauthorizedAccessException e) {
+        } catch (AuthorizationException e) {
             isAllowed = true;
         }
 
-        if (!isAllowed) {
-            throw new NoPermissionException("Access token still valid.");
-        }
+        // Token refreshing 허가 안 된 경우
+        if (!isAllowed)
+            throw new GlobalException(AuthErrorCode.ACCESS_TOKEN_STILL_VALID);
 
-        // refreshToken 유효성 검사
-        String refresh = bearer_refresh.split("Bearer ")[1];
-        Map<String, Object> payload = jwtProvider.verifyJWT(refresh);
-        Long userId = ((Number) payload.get("userId")).longValue();
-        String email = payload.get("email").toString();
+        // refreshToken 유효성 검사 및 유저 추출
+        UserEntity user = validateToken.validateAuthorization(bearer_refresh);
 
         // token 재발급
-        return generateTokens(userId, email);
+        return new RefreshTokenResponseDto(user, generateTokens(user.getId(), user.getEmail()));
     }
 }
