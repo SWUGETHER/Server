@@ -1,93 +1,75 @@
 package com.swugether.server.domain.Post.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swugether.server.domain.Auth.domain.UserEntity;
 import com.swugether.server.domain.Post.domain.*;
-import com.swugether.server.domain.Post.dto.ImageDto;
-import com.swugether.server.domain.Post.dto.PostDto;
-import com.swugether.server.domain.Post.dto.SavedPostDto;
-import com.swugether.server.global.exception.UnauthorizedAccessException;
-import com.swugether.server.global.util.PostDtoProvider;
+import com.swugether.server.domain.Post.dto.*;
+import com.swugether.server.domain.Post.exception.PostErrorCode;
+import com.swugether.server.global.exception.AuthorizationException;
+import com.swugether.server.global.exception.GlobalException;
 import com.swugether.server.global.util.ValidateToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.naming.NoPermissionException;
-import javax.persistence.EntityNotFoundException;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.FileSystemException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 @RequiredArgsConstructor
 @Slf4j
 @Service
 public class PostService {
     private final ValidateToken validateToken;
-    private final PostDtoProvider postDtoProvider;
     private final ContentRepository contentRepository;
     private final ImageRepository imageRepository;
     private final LikedRepository likedRepository;
-    private final ObjectMapper objectMapper;
-    private final String ImagePath = System.getenv("FILE_UPLOAD_BASE_PATH");
 
-    // 게시글 작성 값 유효성 검사
-    public void isPostValueValid(String str, boolean isTitle) throws IllegalArgumentException {
-        boolean isNotValid = true;
-
-        // 공백 검사
-        isNotValid = (str == null) || str.isBlank();
-
-        // title 길이 검사
-        if (isTitle) {
-            assert str != null;
-            isNotValid = (str.length() == 0) || (str.length() > 100);
-        }
-
-        if (isNotValid) {
-            throw new IllegalArgumentException("Invalid value.");
-        }
-    }
+    @Value("${FILE_UPLOAD_BASE_PATH}")
+    private String ImagePath;
 
     // 이미지 저장
-    public void saveImages(ContentEntity post, List<MultipartFile> images) throws IOException {
+    public ArrayList<ImageDto> saveImages(ContentEntity post, ArrayList<MultipartFile> images) throws IOException {
+        ArrayList<ImageDto> result = new ArrayList<>();
+
         for (MultipartFile file : images) {
             ImageEntity image = new ImageEntity(post, null);
             Long image_id = imageRepository.save(image).getId();
             String file_name = image_id + "_" + file.getOriginalFilename();
             String file_path = "/" + post.getId() + "_" + file_name;
-            Path imagePath = Paths.get(ImagePath + file_path);
 
             file.transferTo(new File(ImagePath + file_path));
 
-            imageRepository.updateImagePath(file_path, image_id);
+            image.updateImagePath(file_path);
+
+            result.add(new ImageDto(image_id, file_path));
         }
+
+        return result;
     }
 
     // 이미지 삭제
-    public void deleteImages(ContentEntity post) throws FileSystemException {
+    public void deleteImages(ContentEntity post) throws GlobalException {
         List<ImageDto> images = imageRepository.findAllByPost(post);
 
         for (ImageDto image : images) {
             // 파일 삭제
-            try {
-                File file = new File(ImagePath + image.getImage_path());
-                boolean result = file.delete();
-                if (result) {
-                    log.info("File deleted: " + image.getImage_path());
-                } else {
-                    log.error("File deletion failed: " + image.getImage_path());
-                }
-            } catch (Exception e) {
-                throw new FileSystemException("Deleted image failed.");
+            File file = new File(ImagePath + image.getImage_path());
+
+            // 파일 존재 여부 검사
+            if (!file.exists())
+                throw new GlobalException(PostErrorCode.FILE_NOT_FOUND);
+
+            // 파일 삭제
+            if (file.delete()) {
+                log.info("File deleted: " + image.getImage_path());
+            } else {
+                log.error("File deletion failed: " + image.getImage_path());
+
+                throw new GlobalException(PostErrorCode.FILE_DELETION_FAILED, PostErrorCode.FILE_DELETION_FAILED.getMessage() + image.getImage_path());
             }
 
             // 데이터 삭제
@@ -96,10 +78,9 @@ public class PostService {
     }
 
     // 게시글 목록 조회
-    public ArrayList<Map<String, Object>> listService(String authorization, String order)
-            throws IllegalStateException, UnauthorizedAccessException, NoPermissionException {
+    public PostListDto listService(String authorization, String order) throws GlobalException, AuthorizationException {
         List<ContentEntity> contents;
-        ArrayList<Map<String, Object>> result = new ArrayList<>();
+        ArrayList<PostItemDto> result = new ArrayList<>();
 
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
@@ -109,20 +90,25 @@ public class PostService {
             case "recent" -> contentRepository.findAllByOrderByCreatedAtDesc();
             case "oldest" -> contentRepository.findAllByOrderByCreatedAtAsc();
             case "like" -> contentRepository.findAllByOrderByLikeCountDesc();
-            default -> throw new IllegalStateException("Unexpected value: " + order);
+            default ->
+                    throw new GlobalException(PostErrorCode.INVALID_VALUE, PostErrorCode.INVALID_VALUE.getMessage() + order);
         };
 
         // 데이터 정제
         for (ContentEntity post : contents) {
-            result.add(objectMapper.convertValue(postDtoProvider.getPostItemDto(post, user), Map.class));
+            PostItemDto dto = PostItemDto.builder()
+                    .content(post)
+                    .is_liked(likedRepository.existsByUserAndPost(user, post))
+                    .thumbnail_image_path(imageRepository.findTopByPostOrderByIdAsc(post).getImagePath())
+                    .build();
+            result.add(dto);
         }
 
-        return result;
+        return new PostListDto(result);
     }
 
     // 좋아요한 게시글 목록 조회
-    public ArrayList<Map<String, Object>> likeListService(String authorization)
-            throws UnauthorizedAccessException, NoPermissionException {
+    public PostListDto likeListService(String authorization) throws GlobalException, AuthorizationException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
@@ -131,118 +117,101 @@ public class PostService {
         List<ContentEntity> contents = new ArrayList<>();
 
         for (LikedEntity liked : likes) {
-            ContentEntity content = liked.getPost();
-            contents.add(content);
+            contents.add(liked.getPost());
         }
 
         // 데이터 정제
-        ArrayList<Map<String, Object>> result = new ArrayList<>();
+        ArrayList<PostItemDto> result = new ArrayList<>();
         for (ContentEntity post : contents) {
-            result.add(objectMapper.convertValue(postDtoProvider.getPostItemDto(post, user), Map.class));
+            PostItemDto dto = PostItemDto.builder()
+                    .content(post)
+                    .is_liked(likedRepository.existsByUserAndPost(user, post))
+                    .thumbnail_image_path(imageRepository.findTopByPostOrderByIdAsc(post).getImagePath())
+                    .build();
+            result.add(dto);
         }
 
-        return result;
+        return new PostListDto(result);
     }
 
     // 게시글 세부 조회
-    public Map<String, Object> detailService(String authorization, Long postId)
-            throws IndexOutOfBoundsException, UnauthorizedAccessException, NoPermissionException, EntityNotFoundException {
+    public PostDto detailService(String authorization, Long postId) throws GlobalException, AuthorizationException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
+        // 게시글 유효성 검사
         ContentEntity post = contentRepository.findById(postId)
-                .orElse(null);
+                .orElseThrow(() -> new GlobalException(PostErrorCode.POST_NOT_FOUND));
 
-        if (post == null) {
-            throw new EntityNotFoundException();
-        }
-
-        PostDto postDto = postDtoProvider.getPostDto(post, user);
-        return objectMapper.convertValue(postDto, Map.class);
+        return PostDto.builder()
+                .content(post)
+                .images(imageRepository.findAllByPost(post))
+                .is_liked(likedRepository.existsByUserAndPost(user, post))
+                .build();
     }
 
     // 게시글 작성
-    public Map<String, Long> addService(String authorization, String title, String content,
-                                        List<MultipartFile> images)
-            throws IndexOutOfBoundsException, UnauthorizedAccessException, NoPermissionException, IllegalArgumentException, IOException {
+    @Transactional
+    public SavedPostDto addService(String authorization, NewPostRequestDto newPostRequestDto) throws GlobalException, AuthorizationException, IOException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
-        // 작성 값 유효성 검사
-        isPostValueValid(title, true);
-        isPostValueValid(content, false);
-
         // 게시글 데이터 저장
-        ContentEntity post = new ContentEntity(user, title, content);
-        Long postId = contentRepository.save(post).getId();
+        ContentEntity post = contentRepository.save(newPostRequestDto.toEntity(user));
 
         // 이미지 데이터 저장
-        saveImages(post, images);
+        ArrayList<ImageDto> images = saveImages(post, newPostRequestDto.getImages());
 
         // dto
-        SavedPostDto savedPostDto = SavedPostDto.builder()
-                .post_id(postId)
+        return SavedPostDto.builder()
+                .content(post)
+                .images(images)
                 .build();
-
-        return objectMapper.convertValue(savedPostDto, Map.class);
     }
 
     // 게시글 수정
-    public void updateService(String authorization, Long postId, String title,
-                              String content, List<MultipartFile> images)
-            throws IndexOutOfBoundsException, UnauthorizedAccessException, NoPermissionException, IllegalArgumentException, EntityNotFoundException, IOException {
+    public SavedPostDto updateService(String authorization, Long postId, EditPostRequestDto editPostRequestDto) throws GlobalException, AuthorizationException, IOException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
         // 게시글 조회
-        ContentEntity post = contentRepository.findById(postId).orElse(null);
-        if (post == null) {
-            throw new EntityNotFoundException();
-        }
+        ContentEntity post = contentRepository.findById(postId)
+                .orElseThrow(() -> new GlobalException(PostErrorCode.POST_NOT_FOUND));
 
-        if (!post.getUser().equals(user)) {
-            throw new AccessDeniedException("Not the writer.");
-        }
+        // 게시글 작성자 검사
+        if (!post.getUser().equals(user))
+            throw new GlobalException(PostErrorCode.POST_ACCESS_DENIED);
 
-        if (title != null) {
-            // 값 유효성 검사
-            isPostValueValid(title, true);
-            // 데이터 업데이트
-            post.setTitle(title);
-        }
+        // 데이터 업데이트
+        ArrayList<ImageDto> images = new ArrayList<>();
 
-        if (content != null) {
-            // 값 유효성 검사
-            isPostValueValid(content, true);
-            // 데이터 업데이트
-            post.setContent(content);
-        }
+        post.updatePost(editPostRequestDto.getTitle(), editPostRequestDto.getContent());
 
-        if (images != null) {
-            // 이미지 데이터 수정
-            deleteImages(post);
+        // 이미지 데이터 수정
+        deleteImages(post);
 
-            // 이미지 데이터 저장
-            saveImages(post, images);
-        }
+        // 이미지 데이터 저장
+        if (editPostRequestDto.getImages() != null)
+            images = saveImages(post, editPostRequestDto.getImages());
+
+        return SavedPostDto.builder()
+                .content(post)
+                .images(images)
+                .build();
     }
 
     // 게시글 삭제
-    public void deleteService(String authorization, Long postId)
-            throws NoPermissionException, EntityNotFoundException, FileSystemException {
+    public void deleteService(String authorization, Long postId) throws GlobalException, AuthorizationException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
         // 게시글 조회
-        ContentEntity post = contentRepository.findById(postId).orElse(null);
-        if (post == null) {
-            throw new EntityNotFoundException();
-        }
+        ContentEntity post = contentRepository.findById(postId)
+                .orElseThrow(() -> new GlobalException(PostErrorCode.POST_NOT_FOUND));
 
         // 게시글 작성자 확인
-        if (!Objects.equals(user.getId(), post.getUser().getId())) {
-            throw new AccessDeniedException("Not the writer.");
-        }
+        if (!user.equals(post.getUser()))
+            throw new GlobalException(PostErrorCode.POST_ACCESS_DENIED);
 
         // 이미지 삭제
         deleteImages(post);
@@ -252,37 +221,35 @@ public class PostService {
     }
 
     // 게시글 좋아요 관리
-    public Boolean likeService(String authorization, Long postId)
-            throws NoPermissionException, EntityNotFoundException {
+    @Transactional
+    public PostLikeResponseDto likeService(String authorization, Long postId) throws GlobalException, AuthorizationException {
         // 토큰 유효성 검사 및 유저 정보 추출
         UserEntity user = validateToken.validateAuthorization(authorization);
 
         // 게시글 조회
-        ContentEntity post = contentRepository.findById(postId).orElse(null);
-        if (post == null) {
-            throw new EntityNotFoundException();
-        }
+        ContentEntity post = contentRepository.findById(postId)
+                .orElseThrow(() -> new GlobalException(PostErrorCode.POST_NOT_FOUND));
 
         // 좋아요 정보 조회
         LikedEntity likedEntity = likedRepository.findByUserAndPost(user, post).orElse(null);
 
+        boolean isLiked = true;
         if (likedEntity == null) {
             // 좋아요 설정
-            LikedEntity newLikedEntity = new LikedEntity(user, post);
-            likedRepository.save(newLikedEntity);
+            likedRepository.save(new LikedEntity(user, post));
 
             // 좋아요 수 수정
-            contentRepository.updateLikeCount(post.getLikeCount() + 1, postId);
-
-            return true;
+            post.updateLikeCount(post.getLikeCount() + 1);
         } else {
             // 좋아요 취소
             likedRepository.delete(likedEntity);
 
             // 좋아요 수 수정
-            contentRepository.updateLikeCount(post.getLikeCount() - 1, postId);
+            post.updateLikeCount(post.getLikeCount() - 1);
 
-            return false;
+            isLiked = false;
         }
+
+        return new PostLikeResponseDto(postId, isLiked);
     }
 }

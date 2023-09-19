@@ -4,27 +4,28 @@ import com.swugether.server.domain.Auth.domain.UserEntity;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
+@NoArgsConstructor
+@DynamicUpdate
 @Getter
-@Setter
 @Entity
 @Table(name = "Liked")
-@NoArgsConstructor
-@DynamicInsert
 public class LikedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @ManyToOne(optional = false)
     private UserEntity user;
+
     @ManyToOne(optional = false)
     private ContentEntity post;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

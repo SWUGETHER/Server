@@ -1,9 +1,10 @@
 package com.swugether.server.domain.Post.dto;
 
+import com.swugether.server.domain.Post.domain.ContentEntity;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.ArrayList;
 
 @Getter
 @Setter
@@ -17,20 +18,18 @@ public class PostDto {
     private String title;
     private String content;
     private Integer like_count;
-    private List<ImageDto> images;
+    private ArrayList<ImageDto> images;
     private Boolean is_liked;
 
     @Builder
-    public PostDto(Long post_id, Long user_id, LocalDateTime created_at, LocalDateTime updated_at,
-                   String title, String content, Integer like_count, List<ImageDto> images,
-                   Boolean is_liked) {
-        this.post_id = post_id;
-        this.user_id = user_id;
-        this.created_at = created_at;
-        this.updated_at = updated_at;
-        this.title = title;
-        this.content = content;
-        this.like_count = like_count;
+    public PostDto(ContentEntity content, ArrayList<ImageDto> images, Boolean is_liked) {
+        this.post_id = content.getId();
+        this.user_id = content.getUser().getId();
+        this.created_at = content.getCreatedAt();
+        this.updated_at = content.getUpdatedAt();
+        this.title = content.getTitle();
+        this.content = content.getContent();
+        this.like_count = content.getLikeCount();
         this.images = images;
         this.is_liked = is_liked;
     }
