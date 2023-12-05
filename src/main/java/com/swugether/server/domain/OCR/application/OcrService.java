@@ -14,7 +14,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Objects;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -23,7 +23,7 @@ public class OcrService {
     private String API_BASE_URL;
 
     // fast api 요청
-    public String textFromImageService(MultipartFile image) throws GlobalException {
+    public List<String> textFromImageService(MultipartFile image) throws GlobalException {
         String url = API_BASE_URL + "/extract_data";
 
         // 헤더 설정
@@ -39,14 +39,18 @@ public class OcrService {
 
         // RestTemplate을 사용하여 FastAPI로 POST 요청 보내기
         RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+        ResponseEntity<String[]> response = restTemplate.postForEntity(url, requestEntity, String[].class);
 
         // 응답 처리
-        if (response.getStatusCode().is2xxSuccessful()) {
+        if (response.getBody() == null) {
+            log.error("[ " + url + " ]" + " Request failed.");
+
+            throw new GlobalException(OcrErrorCode.API_REQUEST_FAILED);
+        } else if (response.getStatusCode().is2xxSuccessful()) {
             log.info("[ " + url + " ]" + " Request successed.");
 
-            return response.getBody();
-        } else if (response.getStatusCode().value() == 422 && Objects.requireNonNull(response.getBody()).contains("value_error")) {
+            return List.of(response.getBody());
+        } else if (response.getStatusCode().value() == 422) {
             log.error("Type error.");
 
             throw new GlobalException(OcrErrorCode.INVALID_IMAGE_FORMAT);
