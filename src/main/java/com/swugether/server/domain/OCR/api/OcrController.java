@@ -7,14 +7,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Slf4j
 @RestController
-@RequestMapping("/image")
 public class OcrController {
     private final OcrService ocrService;
 
@@ -24,12 +24,23 @@ public class OcrController {
     }
 
     // 이미지 인식 및 텍스트 추출
-    @PostMapping
+    @PostMapping("/image/text")
     public ResponseEntity<ResponseDto> textFromImage(@RequestPart(value = "file") MultipartFile image) {
 
-        String result = ocrService.textFromImageService(image);
+        List<String> result = ocrService.textFromImageService(image);
 
-        return ResponseEntity.status(201).body(DataResponseDto.of(result, 201));
+        return ResponseEntity.ok(DataResponseDto.of(result, 200));
+
+    }
+
+    // 이미지 인식 및 텍스트 추출
+    @PostMapping("/rec")
+    public ResponseEntity<ResponseDto> ocrAndRecommendation(@RequestPart(value = "file") MultipartFile image) {
+        log.info("requested");
+
+        List<String> result = ocrService.textFromImageService(image);
+
+        return ResponseEntity.ok(DataResponseDto.of(result, 200));
 
     }
 }
